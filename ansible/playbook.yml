@@ -1,0 +1,13 @@
+---
+- name: Provision Ansible SSH key
+  import_playbook: ansible-ssh-key.yml
+
+- name: Setup chs-bind
+  hosts: aws_ec2
+  remote_user: ec2-user
+  become: true
+  gather_facts: true
+  roles:
+    - role: hostname
+    - role: prerequisites
+    - role: companieshouse.security.security_scans

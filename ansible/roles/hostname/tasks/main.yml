@@ -1,0 +1,19 @@
+---
+- name: Set FQDN fact
+  ansible.builtin.set_fact:
+    hostname_fqdn: "{{ ec2_hostname }}.{{ ec2_zone }}"
+  when: ec2_hostname is defined and ec2_zone is defined
+
+- name: Debug FQDN
+  ansible.builtin.debug:
+    var: hostname_fqdn
+    verbosity: 1
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ hostname_fqdn }}"
+  when: hostname_fqdn is defined
+
+- name: Re-gather hostname for ansible facts
+  ansible.builtin.setup:
+    filter: ansible_hostname
