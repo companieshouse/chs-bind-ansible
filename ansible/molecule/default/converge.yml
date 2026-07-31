@@ -1,0 +1,18 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+
+  vars:
+    bind_forward_zones:
+      - name: test.local
+        file: db.test.local
+ 
+  vars_files:
+    - ../../group_vars/all/bind.yml
+
+  roles:
+    - role: bind_install
+    - role: bind_configure
+    - role: bind_zones
+    - role: bind_service

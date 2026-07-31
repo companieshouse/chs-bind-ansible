@@ -1,0 +1,71 @@
+---
+- name: Install BIND packages
+  ansible.builtin.package:
+    name:
+      - bind
+      - bind-utils
+      - git
+      - dnsutils
+    state: present
+    sslverify: false
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Validate BIND packages are installed
+  ansible.builtin.assert:
+    that:
+      - "'bind' in ansible_facts.packages"
+      - "'bind-utils' in ansible_facts.packages"
+    fail_msg: "Required BIND packages are not installed."
+    success_msg: "BIND packages successfully installed."
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Verify named service exists
+  ansible.builtin.debug:
+    msg: "named service detected"
+  when:
+    - ansible_facts.services is defined
+    - "'named.service' in ansible_facts.services"
+
+- name: Enable and start named
+  ansible.builtin.service:
+    name: named
+    enabled: true
+    state: started
+  when:
+    - bind_install_manage_service | bool
+    - ansible_service_mgr == "systemd"
+
+- name: Refresh service facts
+  ansible.builtin.service_facts:
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+  when:
+    - bind_install_verify_service | bool
+    - ansible_service_mgr == "systemd"
+
+- name: Assert named service is active
+  ansible.builtin.assert:
+    that:
+      - "'named.service' in ansible_facts.services"
+      - ansible_facts.services['named.service'].state == 'running'
+    fail_msg: "named service is not running"
+  when:
+    - bind_install_verify_service | bool
+    - ansible_service_mgr == "systemd"
+    - ansible_facts.services is defined
+
+- name: Ensure zones.conf exists
+  ansible.builtin.copy:
+    dest: /etc/named/zones.conf
+    content: |
+      // Managed by Ansible
+    owner: root
+    group: named
+    mode: "0644"
+    force: false

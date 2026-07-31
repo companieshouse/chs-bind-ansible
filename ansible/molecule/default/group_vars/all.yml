@@ -1,0 +1,5 @@
+---
+bind_install_manage_service: false
+bind_install_verify_service: false
+bind_configure_validate_service: false
+bind_manage_service: false

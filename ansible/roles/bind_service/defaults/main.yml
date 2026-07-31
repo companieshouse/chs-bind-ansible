@@ -1,0 +1,35 @@
+---
+# Service records managed by the role
+bind_service_records: []
+
+# Zone files
+bind_service_zone_dir: /var/named
+bind_service_zone_owner: root
+bind_service_zone_group: named
+bind_service_zone_mode: "0644"
+
+# Validation
+bind_service_validate_zones: true
+
+# PTR records
+bind_service_auto_ptr: true
+
+# Lock file
+bind_service_lock_file: /var/lock/bind.lock
+bind_service_lock_owner: root
+bind_service_lock_group: root
+bind_service_lock_mode: "0644"
+
+# Task controls
+bind_service_manage_records: true
+bind_service_manage_ptr: true
+bind_service_update_serial: true
+
+# Optional service settings
+bind_service_name: named
+bind_service_reload_state: reloaded
+bind_service_restart_state: restarted
+
+# Command paths
+bind_service_checkzone_command: /usr/sbin/named-checkzone
+bind_service_checkconf_command: /usr/sbin/named-checkconf

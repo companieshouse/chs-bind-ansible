@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: bind_service
+  author: Companies House
+  description: Manage BIND DNS zone files
+  license: MIT
+
+  min_ansible_version: "2.15"
+
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+
+  galaxy_tags:
+    - bind
+    - dns
+    - named
+
+dependencies: []

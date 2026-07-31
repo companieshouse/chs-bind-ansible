@@ -1,0 +1,20 @@
+---
+- name: Validate DNS zones
+  ansible.builtin.command:
+    cmd: >-
+      named-checkzone
+      {{ item.zone }}
+      {{ bind_service_zone_dir }}/{{ zone_definition.file }}
+  vars:
+    zone_definition: >-
+      {{
+        bind_zone_definitions.zones
+        | selectattr('name', 'equalto', item.zone)
+        | first
+      }}
+  register: bind_service_validate_out
+  failed_when: bind_service_validate_out.rc != 0
+  changed_when: false
+  loop: "{{ bind_service_records | unique(attribute='zone') }}"
+  loop_control:
+    label: "{{ item.zone }}"

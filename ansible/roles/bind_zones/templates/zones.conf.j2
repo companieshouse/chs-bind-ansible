@@ -1,0 +1,9 @@
+// Managed by Ansible
+
+{% for zone in bind_zone_definitions.zones
+      if zone.environment == bind_environment %}
+zone "{{ zone.name }}" IN {
+    type {{ zone.type | default('master') }};
+    file "{{ bind_zones_dir }}/{{ zone.file }}";
+};
+{% endfor %}

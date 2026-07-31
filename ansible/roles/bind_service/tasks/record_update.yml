@@ -1,0 +1,108 @@
+---
+- name: Debug bind_environment
+  ansible.builtin.debug:
+    var: bind_environment
+
+- name: Debug bind_zone_definitions
+  ansible.builtin.debug:
+    var: bind_zone_definitions
+
+- name: Find matching zone definitions
+  ansible.builtin.set_fact:
+    bind_service_matching_zones: >-
+      {{
+        bind_zone_definitions.zones
+        | selectattr('environment', 'equalto', bind_environment)
+        | list
+      }}
+
+- name: Debug matching zones
+  ansible.builtin.debug:
+    var: bind_service_matching_zones
+
+- name: Assert matching zone exists
+  ansible.builtin.assert:
+    that:
+      - bind_service_matching_zones | length > 0
+    fail_msg: >
+      No zone definition found for environment {{ bind_environment }}
+
+- name: Set zone definition
+  ansible.builtin.set_fact:
+    bind_service_zone_definition: "{{ bind_service_matching_zones[0] }}"
+
+#- name: Lookup zone definition
+#  ansible.builtin.set_fact:
+#    bind_service_zone_definition: >-
+#      {{
+#        bind_zone_definitions.zones
+#        | selectattr('environment', 'equalto', bind_environment)
+#        | first
+#      }}
+
+- name: Assert zone definition found
+  ansible.builtin.assert:
+    that:
+      - bind_service_zone_definition is defined
+    fail_msg: "No zone definition found for environment {{ bind_environment }}"
+
+- name: Debug bind_service_zone_dir
+  ansible.builtin.debug:
+    var: bind_service_zone_dir
+
+- name: Debug bind_service_zone_definition
+  ansible.builtin.debug:
+    var: bind_service_zone_definition
+
+
+- name: Read current zone
+  ansible.builtin.slurp:
+    src: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
+  register: bind_service_zone_content
+
+- name: Show zones.yml contents
+  ansible.builtin.debug:
+    msg: "{{ bind_zones_yml.content | b64decode }}"
+
+- name: Build updated zone content
+  ansible.builtin.set_fact:
+    bind_service_new_zone: >-
+      {{
+        bind_service_zone_content.content | b64decode
+        + '\n'
+        + dns_record.name ~ ' IN ' ~ dns_record.type ~ ' '
+        + dns_record.value
+        + ' ; owner=' ~ (dns_record.owner | default('unknown'))
+        + ' ticket=' ~ (dns_record.ticket | default('n/a'))
+      }}
+
+- name: Write temporary zone file
+  ansible.builtin.copy:
+    content: "{{ bind_service_new_zone }}"
+    dest: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.tmp"
+    owner: root
+    group: named
+    mode: "0644"
+
+- name: Validate updated zone
+  ansible.builtin.command:
+    cmd: >-
+      named-checkzone
+      {{ dns_record.zone }}
+      {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.tmp
+  changed_when: false
+
+- name: Replace zone file
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.tmp"
+    dest: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
+    owner: root
+    group: named
+    mode: "0644"
+  notify: Reload named
+
+- name: Remove temporary file
+  ansible.builtin.file:
+    path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.tmp"
+    state: absent

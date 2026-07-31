@@ -1,0 +1,127 @@
+---
+- name: Ensure zone directory exists
+  ansible.builtin.file:
+    path: "{{ bind_zones_dir }}"
+    state: directory
+    owner: "{{ bind_zones_owner }}"
+    group: "{{ bind_zones_group }}"
+    mode: "{{ bind_zones_dir_mode }}"
+
+- name: Ensure git checkout directory exists
+  ansible.builtin.file:
+    path: "{{ bind_zones_git_checkout_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Validate git configuration
+  ansible.builtin.assert:
+    that:
+      - bind_zones_git_repo | length > 0
+      - bind_zones_git_branch | length > 0
+
+- name: Checkout zone repository
+  ansible.builtin.git:
+    repo: "{{ bind_zones_git_repo }}"
+    dest: "{{ bind_zones_git_checkout_dir }}"
+    version: "{{ bind_zones_git_branch }}"
+    update: true
+    force: false
+    key_file: >-
+      {{
+        bind_zones_git_key_file
+        if bind_zones_git_key_file | length > 0
+        else omit
+      }}
+    accept_hostkey: "{{ bind_zones_git_accept_hostkey }}"
+  register: bind_zones_git_pull
+
+- name: Check zones.yml exists
+  ansible.builtin.stat:
+    path: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
+  register: zones_yml_file
+
+- name: Read zones.yml from remote host
+  ansible.builtin.slurp:
+    src: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
+  register: bind_zones_yml
+
+- name: Parse zones.yml
+  ansible.builtin.set_fact:
+    bind_zone_definitions: >-
+      {{
+        bind_zones_yml.content
+        | b64decode
+        | from_yaml
+      }}
+
+- name: Select zones for current environment
+  ansible.builtin.set_fact:
+    bind_active_zones: >-
+      {{
+        bind_zone_definitions.zones
+        | selectattr('environment', 'equalto', bind_environment)
+        | list
+      }}
+
+- name: Deploy zones.conf
+  ansible.builtin.template:
+    src: zones.conf.j2
+    dest: /etc/named/zones.conf
+    owner: root
+    group: named
+    mode: "0644"
+    validate: "named-checkconf %s"
+  notify: Reload named
+
+
+- name: Debug zone directory
+  ansible.builtin.debug:
+    msg: "{{ bind_zones_dir }}/{{ item.file | dirname }}"
+  loop: "{{ bind_active_zones }}"
+
+- name: Create zone directories
+  ansible.builtin.file:
+    path: "{{ bind_zones_dir }}/{{ item.file | dirname }}"
+    state: directory
+    owner: "{{ bind_zones_owner }}"
+    group: "{{ bind_zones_group }}"
+    mode: "{{ bind_zones_directory_mode }}"
+  loop: "{{ bind_active_zones }}"
+
+#  loop: >-
+#    {{
+#      bind_zone_definitions.zones
+#      | selectattr('environment', 'equalto', bind_environment)
+#      | map(attribute='file')
+#      | map('dirname')
+#      | unique
+#      | list
+#    }}
+
+- name: Copy zone files
+  ansible.builtin.copy:
+    src: "{{ bind_zones_git_checkout_dir }}/groups/zones/{{ item.file }}"
+    dest: "{{ bind_zones_dir }}/{{ item.file }}"
+    owner: "{{ bind_zones_owner }}"
+    group: "{{ bind_zones_group }}"
+    mode: "{{ bind_zones_file_mode }}"
+    remote_src: true
+  loop: "{{ bind_active_zones }}"
+  notify: Reload named
+
+- name: Validate zone files
+  ansible.builtin.command:
+    cmd: >-
+      named-checkzone
+      {{ item.name }}
+      {{ bind_zones_dir }}/{{ item.file }}
+  loop: "{{ bind_active_zones }}"
+  changed_when: false
+
+- name: Validate BIND configuration
+  ansible.builtin.command:
+    cmd: named-checkconf
+  changed_when: false
+

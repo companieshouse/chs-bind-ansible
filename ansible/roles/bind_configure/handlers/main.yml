@@ -1,0 +1,22 @@
+---
+- name: Restart named
+  ansible.builtin.systemd_service:
+    name: "{{ bind_configure_service_name }}"
+    state: restarted
+  listen: Restart named
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+  listen: Restart named
+
+- name: Assert named service restarted successfully
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services[bind_configure_service_name ~ '.service'].state == 'running'
+    fail_msg: >-
+      {{ bind_configure_service_name }}
+      service is not running after restart.
+    success_msg: >-
+      {{ bind_configure_service_name }}
+      service is running.
+  listen: Restart named

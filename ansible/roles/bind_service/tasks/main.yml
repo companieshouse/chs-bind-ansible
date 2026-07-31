@@ -1,0 +1,53 @@
+---
+- name: Acquire lock
+  ansible.builtin.file:
+    path: "{{ bind_service_lock_file }}"
+    state: touch
+    owner: "{{ bind_service_lock_owner }}"
+    group: "{{ bind_service_lock_group }}"
+    mode: "{{ bind_service_lock_mode }}"
+
+- name: Read zones.yml from remote host
+  ansible.builtin.slurp:
+    src: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
+  register: bind_zones_yml
+
+- name: Show raw zones.yml
+  ansible.builtin.debug:
+    msg: "{{ bind_zones_yml.content | b64decode }}"
+
+- name: Parse zones.yml
+  ansible.builtin.set_fact:
+    bind_zone_definitions: >-
+      {{
+        bind_zones_yml.content
+        | b64decode
+        | from_yaml
+      }}
+
+- name: Debug bind_zone_definitions
+  ansible.builtin.debug:
+    var: bind_zone_definitions
+
+- name: Manage service records
+  ansible.builtin.include_tasks: records.yml
+  when: bind_service_manage_records | bool
+
+- name: Manage PTR records
+  ansible.builtin.include_tasks: ptr.yml
+  when:
+    - bind_service_manage_ptr | bool
+    - bind_service_auto_ptr | bool
+
+- name: Update zone serials
+  ansible.builtin.include_tasks: serial.yml
+  when: bind_service_update_serial | bool
+
+- name: Validate zones
+  ansible.builtin.include_tasks: validate.yml
+  when: bind_service_validate_zones | bool
+
+- name: Release lock
+  ansible.builtin.file:
+    path: "{{ bind_service_lock_file }}"
+    state: absent

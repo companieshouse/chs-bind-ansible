@@ -1,0 +1,19 @@
+---
+bind_configure_validate_service: true
+bind_configure_role: master
+
+bind_configure_listen_ipv4:
+  - 127.0.0.1
+  - "{{ ansible_default_ipv4.address }}"
+
+bind_configure_allow_query:
+  - any
+
+bind_configure_allow_transfer:
+  - none
+
+bind_configure_masters: []
+
+bind_configure_named_conf: /etc/named.conf
+
+bind_configure_service_name: named

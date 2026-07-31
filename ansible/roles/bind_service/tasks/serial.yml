@@ -1,0 +1,19 @@
+---
+- name: Update zone serial
+  ansible.builtin.replace:
+    path: >-
+      {{
+        bind_service_zone_dir
+      }}/{{
+        (
+          bind_zone_definitions.zones
+          | selectattr('name', 'equalto', item.zone)
+          | first
+        ).file
+      }}
+    regexp: '(\d{10})'
+    replace: "{{ lookup('pipe', 'date +%Y%m%d%H') }}"
+  loop: "{{ bind_service_records | unique(attribute='zone') }}"
+  loop_control:
+    label: "{{ item.zone }}"
+  notify: Reload named
