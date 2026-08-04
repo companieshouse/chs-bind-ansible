@@ -18,10 +18,10 @@ bind_zones_directory_mode: "0770"
 bind_configure_named_conf: /etc/named.conf
 bind_configure_zones_conf: /etc/named/zones.conf
 
-bind_environment: staging
+bind_environment: development
 
 bind_zones_git_repo: git@github.com:companieshouse/bind-terraform.git
-bind_zones_git_branch: zone-file-update
+bind_zones_git_branch: ansible-zone-test
 bind_zones_git_checkout_dir: /opt/bind-zones
 
 bind_service_name: named
@@ -36,7 +36,6 @@ bind_role: master # or slave
 bind_master_ip: ""
 
 bind_metadata_file: "{{ bind_persist_dir }}/metadata.json"
-bind_zones_git_checkout_dir: /opt/bind-zones
 
 
 bind_zones:
@@ -66,17 +65,17 @@ bind_service_lock_mode: "0644"
 
 bind_service_records:
 
-  - zone: "{{ bind_environment }}.aws.internal"
+  - zone: "heritage-{{ bind_environment }}.aws.internal"
     name: ns1
     type: A
     value: 10.0.0.10
 
-  - zone: "{{ bind_environment }}.aws.internal"
+  - zone: "heritage-{{ bind_environment }}.aws.internal"
     name: ns2
     type: A
     value: 10.0.0.11
 
-  - zone: "{{ bind_environment }}.aws.internal"
+  - zone: "heritage-{{ bind_environment }}.aws.internal"
     name: mail
     type: A
     value: 10.0.0.20

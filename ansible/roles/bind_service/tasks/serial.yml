@@ -8,6 +8,7 @@
         (
           bind_zone_definitions.zones
           | selectattr('name', 'equalto', item.zone)
+          | list
           | first
         ).file
       }}
@@ -17,3 +18,16 @@
   loop_control:
     label: "{{ item.zone }}"
   notify: Reload named
+
+- name: Validate all record zones exist in zones.yml
+  ansible.builtin.assert:
+    that:
+      - >
+        bind_zone_definitions.zones
+        | selectattr('name', 'equalto', item.zone)
+        | list
+        | length > 0
+    fail_msg: "Zone {{ item.zone }} not found in zones.yml"
+  loop: "{{ bind_service_records | unique(attribute='zone') }}"
+  loop_control:
+    label: "{{ item.zone }}"

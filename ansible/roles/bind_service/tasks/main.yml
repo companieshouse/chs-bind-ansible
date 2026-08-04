@@ -12,10 +12,6 @@
     src: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
   register: bind_zones_yml
 
-- name: Show raw zones.yml
-  ansible.builtin.debug:
-    msg: "{{ bind_zones_yml.content | b64decode }}"
-
 - name: Parse zones.yml
   ansible.builtin.set_fact:
     bind_zone_definitions: >-
@@ -24,10 +20,6 @@
         | b64decode
         | from_yaml
       }}
-
-- name: Debug bind_zone_definitions
-  ansible.builtin.debug:
-    var: bind_zone_definitions
 
 - name: Manage service records
   ansible.builtin.include_tasks: records.yml

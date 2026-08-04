@@ -16,3 +16,4 @@
     - role: bind_configure
     - role: bind_zones
     - role: bind_service
+    - role: companieshouse.security.security_scans

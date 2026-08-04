@@ -1,0 +1,24 @@
+---
+- name: Debug bind_environment
+  ansible.builtin.debug:
+    var: bind_environment
+
+- name: Debug bind_zone_definitions
+  ansible.builtin.debug:
+    var: bind_zone_definitions
+
+- name: Find matching zone definitions
+  ansible.builtin.set_fact:
+    bind_service_matching_zones: >-
+      {{
+        bind_zone_definitions.zones
+        | selectattr('environment', 'equalto', bind_environment)
+        | list
+      }}
+
+- name: Debug matching zones
+  ansible.builtin.debug:
+    var: bind_service_matching_zones
+
+- name: Assert matching zone exists
+  ansible.builtin.assert:

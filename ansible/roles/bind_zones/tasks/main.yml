@@ -75,12 +75,6 @@
     validate: "named-checkconf %s"
   notify: Reload named
 
-
-- name: Debug zone directory
-  ansible.builtin.debug:
-    msg: "{{ bind_zones_dir }}/{{ item.file | dirname }}"
-  loop: "{{ bind_active_zones }}"
-
 - name: Create zone directories
   ansible.builtin.file:
     path: "{{ bind_zones_dir }}/{{ item.file | dirname }}"
@@ -89,16 +83,6 @@
     group: "{{ bind_zones_group }}"
     mode: "{{ bind_zones_directory_mode }}"
   loop: "{{ bind_active_zones }}"
-
-#  loop: >-
-#    {{
-#      bind_zone_definitions.zones
-#      | selectattr('environment', 'equalto', bind_environment)
-#      | map(attribute='file')
-#      | map('dirname')
-#      | unique
-#      | list
-#    }}
 
 - name: Copy zone files
   ansible.builtin.copy:
@@ -124,4 +108,3 @@
   ansible.builtin.command:
     cmd: named-checkconf
   changed_when: false
-

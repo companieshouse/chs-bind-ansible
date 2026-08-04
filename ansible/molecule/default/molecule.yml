@@ -39,7 +39,7 @@ provisioner:
     group_vars:
       all:
         bind_zones_git_repo: git@github.com:companieshouse/bind-terraform.git
-        bind_zones_git_branch: main
+        bind_zones_git_branch: ansible-zone-test
     hosts:
       all:
         hosts:
