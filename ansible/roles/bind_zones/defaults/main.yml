@@ -20,4 +20,4 @@ bind_zones_git_accept_hostkey: true
 
 # Reload service after successful deployment
 bind_zones_service_name: named
-bind_manage_service: true
+bind_zones_bind_manage_service: true

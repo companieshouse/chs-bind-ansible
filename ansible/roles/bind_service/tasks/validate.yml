@@ -8,7 +8,7 @@
   vars:
     zone_definition: >-
       {{
-        bind_zone_definitions.zones
+        bind_zones_bind_zone_definitions.zones
         | selectattr('name', 'equalto', item.zone)
         | first
       }}

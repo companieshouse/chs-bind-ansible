@@ -6,7 +6,7 @@
         bind_service_zone_dir
       }}/{{
         (
-          bind_zone_definitions.zones
+          bind_zones_bind_zone_definitions.zones
           | selectattr('name', 'equalto', item.zone)
           | list
           | first
@@ -23,7 +23,7 @@
   ansible.builtin.assert:
     that:
       - >
-        bind_zone_definitions.zones
+        bind_zones_bind_zone_definitions.zones
         | selectattr('name', 'equalto', item.zone)
         | list
         | length > 0

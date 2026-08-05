@@ -40,27 +40,27 @@
 - name: Check zones.yml exists
   ansible.builtin.stat:
     path: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
-  register: zones_yml_file
+  register: bind_zones_zones_yml_file
 
 - name: Read zones.yml from remote host
   ansible.builtin.slurp:
     src: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
-  register: bind_zones_yml
+  register: bind_zones_bind_zones_yml
 
 - name: Parse zones.yml
   ansible.builtin.set_fact:
-    bind_zone_definitions: >-
+    bind_zones_bind_zone_definitions: >-
       {{
-        bind_zones_yml.content
+        bind_zones_bind_zones_yml.content
         | b64decode
         | from_yaml
       }}
 
 - name: Select zones for current environment
   ansible.builtin.set_fact:
-    bind_active_zones: >-
+    bind_zones_bind_active_zones: >-
       {{
-        bind_zone_definitions.zones
+        bind_zones_bind_zone_definitions.zones
         | selectattr('environment', 'equalto', bind_environment)
         | list
       }}
@@ -82,7 +82,7 @@
     owner: "{{ bind_zones_owner }}"
     group: "{{ bind_zones_group }}"
     mode: "{{ bind_zones_directory_mode }}"
-  loop: "{{ bind_active_zones }}"
+  loop: "{{ bind_zones_bind_active_zones }}"
 
 - name: Copy zone files
   ansible.builtin.copy:
@@ -92,7 +92,7 @@
     group: "{{ bind_zones_group }}"
     mode: "{{ bind_zones_file_mode }}"
     remote_src: true
-  loop: "{{ bind_active_zones }}"
+  loop: "{{ bind_zones_bind_active_zones }}"
   notify: Reload named
 
 - name: Validate zone files
@@ -101,7 +101,7 @@
       named-checkzone
       {{ item.name }}
       {{ bind_zones_dir }}/{{ item.file }}
-  loop: "{{ bind_active_zones }}"
+  loop: "{{ bind_zones_bind_active_zones }}"
   changed_when: false
 
 - name: Validate BIND configuration

@@ -10,13 +10,13 @@
 - name: Read zones.yml from remote host
   ansible.builtin.slurp:
     src: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
-  register: bind_zones_yml
+  register: bind_service_bind_zones_yml
 
 - name: Parse zones.yml
   ansible.builtin.set_fact:
-    bind_zone_definitions: >-
+    bind_service_bind_zone_definitions: >-
       {{
-        bind_zones_yml.content
+        bind_service_bind_zones_yml.content
         | b64decode
         | from_yaml
       }}

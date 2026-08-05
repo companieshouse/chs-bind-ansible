@@ -1,6 +1,6 @@
 // Managed by Ansible
 
-{% for zone in bind_zone_definitions.zones
+{% for zone in bind_zones_bind_zone_definitions.zones
       if zone.environment == bind_environment %}
 zone "{{ zone.name }}" IN {
     type {{ zone.type | default('master') }};

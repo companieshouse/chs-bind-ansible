@@ -7,7 +7,7 @@
   ansible.builtin.set_fact:
     bind_service_matching_zones: >-
       {{
-        bind_zone_definitions.zones
+        bind_zones_bind_zone_definitions.zones
         | selectattr('environment', 'equalto', bind_environment)
         | list
       }}
@@ -34,7 +34,8 @@
     src: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
   register: bind_service_zone_content
 
-- block:
+- name: Apply DNS record updates to zone work file
+  block:
     - name: Create work copy
       ansible.builtin.copy:
         remote_src: true
@@ -81,12 +82,24 @@
         cmd: named-checkconf -z
       changed_when: false
 
+    - name: Compare current and validated zone
+      ansible.builtin.command:
+        cmd: >-
+          cmp -s
+          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}
+          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
+      register: bind_service_zone_compare
+      failed_when: false
+      changed_when: false
+
     - name: Promote validated zone
       ansible.builtin.command:
         cmd: >-
           mv -f
           {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
           {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}
+      when: bind_service_zone_compare.rc != 0
+      changed_when: bind_service_zone_compare.rc != 0
       notify: Reload named
 
   rescue:
