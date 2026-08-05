@@ -1,0 +1,23 @@
+---
+# BIND zone deployment
+
+bind_zones_dir: /var/named
+
+bind_zones_owner: named
+bind_zones_group: named
+bind_zones_dir_mode: "{{ bind_zones_directory_mode }}"
+bind_zones_file_mode: "{{ bind_zones_file_mode }}"
+
+# GitHub source of truth
+
+bind_zones_git_repo: ""
+bind_zones_git_branch: main
+bind_zones_git_checkout_dir: /opt/bind-zones
+
+# Optional for private repositories
+bind_zones_git_key_file: ""
+bind_zones_git_accept_hostkey: true
+
+# Reload service after successful deployment
+bind_zones_service_name: named
+bind_zones_bind_manage_service: true

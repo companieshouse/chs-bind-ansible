@@ -1,0 +1,81 @@
+---
+bind_user: named
+bind_group: named
+
+bind_conf_dir: /etc/named
+bind_zones_dir: /var/named
+
+bind_named_owner: root
+bind_named_group: named
+bind_named_mode: "0770"
+
+bind_zones_owner: root
+bind_zones_group: named
+
+bind_zones_file_mode: "0644"
+bind_zones_directory_mode: "0770"
+
+bind_configure_named_conf: /etc/named.conf
+bind_configure_zones_conf: /etc/named/zones.conf
+
+bind_environment: development
+
+bind_zones_git_repo: git@github.com:companieshouse/bind-terraform.git
+bind_zones_git_branch: ansible-zone-test
+bind_zones_git_checkout_dir: /opt/bind-zones
+
+bind_service_name: named
+bind_service_zone_dir: /var/named
+
+# bind_manage_service: true
+
+########
+
+
+bind_role: master # or slave
+bind_master_ip: ""
+
+bind_metadata_file: "{{ bind_persist_dir }}/metadata.json"
+
+
+bind_zones:
+  - zone: heritage-development.aws.internal
+    file: development/forward/db.heritage.aws.internal
+    environment: development
+
+  - zone: heritage-staging.aws.internal
+    file: staging/forward/db.heritage.aws.internal
+    environment: staging
+
+  - zone: heritage-live.aws.internal
+    file: live/forward/db.heritage.aws.internal
+    environment: live
+
+
+# bind_service
+
+bind_service_validate_zones: true
+bind_service_auto_ptr: true
+
+bind_service_lock_file: /var/lock/bind.lock
+bind_service_lock_owner: root
+bind_service_lock_group: root
+bind_service_lock_mode: "0644"
+
+
+bind_service_records:
+
+  - zone: "heritage-{{ bind_environment }}.aws.internal"
+    name: ns1
+    type: A
+    value: 10.0.0.10
+
+  - zone: "heritage-{{ bind_environment }}.aws.internal"
+    name: ns2
+    type: A
+    value: 10.0.0.11
+
+  - zone: "heritage-{{ bind_environment }}.aws.internal"
+    name: mail
+    type: A
+    value: 10.0.0.20

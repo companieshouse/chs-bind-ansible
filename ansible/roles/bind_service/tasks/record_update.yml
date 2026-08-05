@@ -1,0 +1,123 @@
+---
+- name: Debug bind_environment
+  ansible.builtin.debug:
+    var: bind_environment
+
+- name: Find matching zone definitions
+  ansible.builtin.set_fact:
+    bind_service_matching_zones: >-
+      {{
+        bind_zones_bind_zone_definitions.zones
+        | selectattr('environment', 'equalto', bind_environment)
+        | list
+      }}
+
+- name: Assert matching zone exists
+  ansible.builtin.assert:
+    that:
+      - bind_service_matching_zones | length > 0
+    fail_msg: >-
+      No zone definition found for environment {{ bind_environment }}
+
+- name: Set zone definition
+  ansible.builtin.set_fact:
+    bind_service_zone_definition: "{{ bind_service_matching_zones[0] }}"
+
+- name: Assert zone definition found
+  ansible.builtin.assert:
+    that:
+      - bind_service_zone_definition is defined
+    fail_msg: "No zone definition found for environment {{ bind_environment }}"
+
+- name: Read current zone
+  ansible.builtin.slurp:
+    src: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
+  register: bind_service_zone_content
+
+- name: Apply DNS record updates to zone work file
+  block:
+    - name: Create work copy
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
+        dest: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        owner: root
+        group: named
+        mode: "0644"
+
+    - name: Ensure zone ends with newline
+      ansible.builtin.lineinfile:
+        path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        line: ""
+        insertafter: EOF
+
+    - name: Check if record exists
+      ansible.builtin.shell: >
+        grep -E '^{{ dns_record.name }}[[:space:]]+IN[[:space:]]+{{ dns_record.type }}'
+        {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
+      register: bind_service_existing_record
+      failed_when: false
+      changed_when: false
+
+    - name: Add DNS record
+      ansible.builtin.lineinfile:
+        path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        line: >-
+          {{ dns_record.name }} IN {{ dns_record.type }}
+          {{ dns_record.value }}
+          ; owner={{ dns_record.owner | default('unknown') }}
+          ticket={{ dns_record.ticket | default('n/a') }}
+        insertafter: EOF
+
+    - name: Validate updated zone
+      ansible.builtin.command:
+        cmd: >-
+          named-checkzone
+          {{ bind_service_zone_definition.name }}
+          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
+      changed_when: false
+
+    - name: Validate full DNS configuration
+      ansible.builtin.command:
+        cmd: named-checkconf -z
+      changed_when: false
+
+    - name: Compare current and validated zone
+      ansible.builtin.command:
+        cmd: >-
+          cmp -s
+          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}
+          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
+      register: bind_service_zone_compare
+      failed_when: false
+      changed_when: false
+
+    - name: Promote validated zone
+      ansible.builtin.command:
+        cmd: >-
+          mv -f
+          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
+          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}
+      when: bind_service_zone_compare.rc != 0
+      changed_when: bind_service_zone_compare.rc != 0
+      notify: Reload named
+
+  rescue:
+    - name: Remove failed work file
+      ansible.builtin.file:
+        path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        state: absent
+
+    - name: Verify original zone still exists
+      ansible.builtin.stat:
+        path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
+      register: bind_service_live_zone
+
+    - name: Assert live zone preserved
+      ansible.builtin.assert:
+        that:
+          - bind_service_live_zone.stat.exists
+
+    - name: Fail play
+      ansible.builtin.fail:
+        msg: "Zone validation failed. Original zone preserved."

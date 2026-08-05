@@ -1,0 +1,7 @@
+bind_install_packages:
+  - bind
+  - bind-utils
+  - git
+
+bind_install_manage_service: true
+bind_install_verify_service: true

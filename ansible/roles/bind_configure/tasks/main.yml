@@ -1,0 +1,44 @@
+---
+- name: Validate role type
+  ansible.builtin.assert:
+    that:
+      - bind_configure_role in ['master', 'slave']
+    fail_msg: >
+      Invalid bind_configure_role '{{ bind_configure_role }}'.
+      Must be 'master' or 'slave'.
+
+- name: Validate slave masters are defined
+  ansible.builtin.assert:
+    that:
+      - bind_configure_masters | length > 0
+    fail_msg: >
+      bind_configure_masters must contain at least one master
+      server when bind_configure_role=slave.
+  when: bind_configure_role == 'slave'
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+  when:
+    - bind_configure_validate_service | bool
+    - ansible_service_mgr == "systemd"
+
+- name: Validate named service is available
+  ansible.builtin.assert:
+    that:
+      - (bind_configure_service_name ~ '.service') in ansible_facts.services
+    fail_msg: "BIND service not found"
+  when:
+    - bind_configure_validate_service | bool
+    - ansible_service_mgr == "systemd"
+    - ansible_facts.services is defined
+
+- name: Deploy named.conf
+  ansible.builtin.template:
+    src: named.conf.j2
+    dest: "{{ bind_configure_named_conf }}"
+    owner: root
+    group: named
+    mode: "0640"
+    backup: true
+    validate: "named-checkconf %s"
+  notify: Restart named

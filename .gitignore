@@ -7,3 +7,8 @@ galaxy_roles/
 # Mac files
 .DS_Store
 ._*
+
+#pyton plugins
+.venv
+molecule
+.docsible

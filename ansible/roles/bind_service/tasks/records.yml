@@ -1,0 +1,23 @@
+---
+- name: Process DNS record changes
+  ansible.builtin.include_tasks: record_update.yml
+  loop: "{{ bind_service_records }}"
+  loop_control:
+    loop_var: dns_record
+
+- name: Log DNS changes
+  ansible.builtin.lineinfile:
+    path: /var/log/bind_changes.log
+    create: true
+    owner: root
+    group: root
+    mode: "0640"
+    line: >-
+      {{ ansible_date_time.iso8601 }}
+      user={{ bind_service_user | default('ansible') }}
+      action={{ item.state | default('present') }}
+      name={{ item.name }}
+      zone={{ item.zone }}
+      value={{ item.value | default('') }}
+      ticket={{ item.ticket | default('n/a') }}
+  loop: "{{ bind_service_records }}"
