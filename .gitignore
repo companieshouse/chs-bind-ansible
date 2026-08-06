@@ -9,6 +9,17 @@ galaxy_roles/
 ._*
 
 #pyton plugins
-.venv
-molecule
-.docsible
+ansible/roles/*/filter_plugins/__pycache__/
+ansible/roles/bind_service/filter_plugins/__pycache__/
+*.pyc
+*.pyo
+
+ansible/.venv
+ansible/molecule
+ansible/roles/bind_service/.docsible
+ansible/roles/bind_install/.docsible
+ansible/roles/bind_configure/.docsible
+ansible/roles/bind_zones/.docsible
+inventory/molecule-test.yml
+molecule-test.ini
+molecule-test.yml

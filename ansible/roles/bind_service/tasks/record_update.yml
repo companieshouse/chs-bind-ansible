@@ -3,11 +3,26 @@
   ansible.builtin.debug:
     var: bind_environment
 
+- name: Read zones.yml
+  ansible.builtin.slurp:
+    src: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
+  register: bind_service_zones_yml
+
+- name: Parse zones.yml
+  ansible.builtin.set_fact:
+    bind_service_zone_definitions: >-
+      {{
+        bind_service_zones_yml.content
+        | b64decode
+        | from_yaml
+      }}
+
+################## above here is to testing and making bind_service self-contained
 - name: Find matching zone definitions
   ansible.builtin.set_fact:
     bind_service_matching_zones: >-
       {{
-        bind_zones_bind_zone_definitions.zones
+        bind_service_zone_definitions.zones
         | selectattr('environment', 'equalto', bind_environment)
         | list
       }}
