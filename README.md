@@ -1,16 +1,17 @@
 
 BIND DNS SERVICE
 
+This repository provides a GitOps-based automation framework for managing BIND DNS infrastructure using Ansible.
+The solution is separated into four independent roles, each with a clearly defined responsibility:
+
 bind_install → package installation
 bind_configure → core BIND configuration
 bind_zones → zone file deployment
 bind_service → DNS record lifecycle management
+
+
 BIND DNS Automation
 Overview
-
-This repository provides a GitOps-based automation framework for managing BIND DNS infrastructure using Ansible.
-
-The solution is separated into four independent roles, each with a clearly defined responsibility:
 
 Role	Purposebind_install	Installs required BIND packages
 bind_configure	Deploys and manages BIND configuration
