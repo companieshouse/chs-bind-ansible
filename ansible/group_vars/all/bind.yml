@@ -79,3 +79,10 @@ bind_service_records:
     name: mail
     type: A
     value: 10.0.0.20
+
+# bind verification service
+bind_verification:
+  record: molecule-test
+  zone: dummyhouse.co.uk
+  type: A
+  expected_value: 10.10.20.30

@@ -1,0 +1,13 @@
+---
+- name: DNS Record Update
+  hosts: bind_primary
+  become: true
+  gather_facts: false
+
+  vars:
+    bind_service_manage_records: true
+    bind_service_manage_ptr: true
+    bind_service_validate_zones: true
+
+  roles:
+    - bind_service
