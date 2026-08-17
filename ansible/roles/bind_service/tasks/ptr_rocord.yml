@@ -1,0 +1,135 @@
+---
+- name: Process PTR records
+  block:
+
+    - name: Check PTR zone exists
+      ansible.builtin.stat:
+        path: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone
+      register: ptr_zone
+
+    - name: Assert PTR zone exists
+      ansible.builtin.assert:
+        that:
+          - ptr_zone.stat.exists
+        fail_msg: >-
+          PTR zone file for {{ item.value }} does not exist
+
+    - name: Create PTR work copy
+      ansible.builtin.copy:
+        remote_src: true
+        src: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone
+        dest: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+        owner: "{{ bind_service_zone_owner }}"
+        group: "{{ bind_service_zone_group }}"
+        mode: "{{ bind_service_zone_mode }}"
+
+    - name: Ensure PTR record present
+      ansible.builtin.lineinfile:
+        path: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+        regexp: >-
+          ^{{ item.value.split('.')[-1] }}[[:space:]]+IN[[:space:]]+PTR.*$
+        line: >-
+          {{ item.value.split('.')[-1] }}
+          IN PTR
+          {{ item.name }}.{{ item.zone }}.
+      when:
+        - item.action | default('add') in ['add', 'update']
+
+    - name: Ensure PTR record absent
+      ansible.builtin.lineinfile:
+        path: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+        regexp: >-
+          ^{{ item.value.split('.')[-1] }}[[:space:]]+IN[[:space:]]+PTR.*$
+        state: absent
+      when:
+        - item.action == 'remove'
+
+    - name: Validate PTR zone
+      ansible.builtin.command:
+        cmd: >-
+          named-checkzone
+          {{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+      changed_when: false
+
+    - name: Compare live and work PTR zone
+      ansible.builtin.command:
+        cmd: >-
+          cmp -s
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+      register: ptr_zone_compare
+      failed_when: false
+      changed_when: false
+
+    - name: Promote validated PTR zone
+      ansible.builtin.copy:
+        remote_src: true
+        src: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+        dest: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone
+        owner: "{{ bind_service_zone_owner }}"
+        group: "{{ bind_service_zone_group }}"
+        mode: "{{ bind_service_zone_mode }}"
+      when: ptr_zone_compare.rc != 0
+      notify: Reload named
+
+  rescue:
+
+    - name: Remove failed PTR work file
+      ansible.builtin.file:
+        path: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+        state: absent
+
+    - name: Fail PTR update
+      ansible.builtin.fail:
+        msg: >-
+          PTR zone validation failed for {{ item.value }}
+
+  always:
+
+    - name: Remove PTR work file
+      ansible.builtin.file:
+        path: >-
+          {{
+            bind_service_zone_dir
+          }}/{{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone.work
+        state: absent
+
+  loop: >-
+    {{
+      bind_service_records
+      | selectattr('type', 'equalto', 'A')
+      | list
+    }}
+  loop_control:
+    label: "{{ item.value }}"

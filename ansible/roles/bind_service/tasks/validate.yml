@@ -1,4 +1,12 @@
 ---
+- name: Ensure zone definition exists
+  ansible.builtin.assert:
+    that:
+      - zone_definition is defined
+      - zone_definition.file is defined
+    fail_msg: >
+      No matching zone definition found for {{ item.zone }}
+
 - name: Validate DNS zones
   ansible.builtin.command:
     cmd: >-
@@ -9,7 +17,7 @@
     zone_definition: >-
       {{
         bind_service_zone_definitions.zones
-        | selectattr('name', 'equalto', item.zone)
+        | selectattr('zone', 'equalto', item.zone)
         | first
       }}
   register: bind_service_validate_out

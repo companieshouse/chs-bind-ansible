@@ -1,0 +1,28 @@
+---
+- name: Manage BIND DNS records
+  hosts: aws_ec2
+  remote_user: ec2-user
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: Validate bind_action
+      ansible.builtin.assert:
+        that:
+          - bind_action is defined
+          - bind_action in ['record_add', 'record_remove', 'record_update']
+
+    - name: Validate bind_environment
+      ansible.builtin.assert:
+        that:
+          - bind_environment is defined
+          - bind_environment in ['development', 'staging', 'live']
+
+    - name: Validate bind_service_records
+      ansible.builtin.assert:
+        that:
+          - bind_service_records is defined
+          - bind_service_records | length > 0
+
+  roles:
+    - role: bind_service

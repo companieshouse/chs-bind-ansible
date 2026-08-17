@@ -1,23 +1,4 @@
 ---
-- name: Debug bind_environment
-  ansible.builtin.debug:
-    var: bind_environment
-
-- name: Read zones.yml
-  ansible.builtin.slurp:
-    src: "{{ bind_zones_git_checkout_dir }}/groups/zones/zones.yml"
-  register: bind_service_zones_yml
-
-- name: Parse zones.yml
-  ansible.builtin.set_fact:
-    bind_service_zone_definitions: >-
-      {{
-        bind_service_zones_yml.content
-        | b64decode
-        | from_yaml
-      }}
-
-################## above here is to testing and making bind_service self-contained
 - name: Find matching zone definitions
   ansible.builtin.set_fact:
     bind_service_matching_zones: >-
@@ -38,17 +19,6 @@
   ansible.builtin.set_fact:
     bind_service_zone_definition: "{{ bind_service_matching_zones[0] }}"
 
-- name: Assert zone definition found
-  ansible.builtin.assert:
-    that:
-      - bind_service_zone_definition is defined
-    fail_msg: "No zone definition found for environment {{ bind_environment }}"
-
-- name: Read current zone
-  ansible.builtin.slurp:
-    src: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
-  register: bind_service_zone_content
-
 - name: Apply DNS record updates to zone work file
   block:
     - name: Create work copy
@@ -66,31 +36,47 @@
         line: ""
         insertafter: EOF
 
-    - name: Check if record exists
-      ansible.builtin.shell: >
-        grep -E '^{{ dns_record.name }}[[:space:]]+IN[[:space:]]+{{ dns_record.type }}'
-        {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
-      register: bind_service_existing_record
-      failed_when: false
-      changed_when: false
-
-    - name: Add DNS record
+    - name: Ensure DNS record present
       ansible.builtin.lineinfile:
         path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        regexp: >-
+          ^{{ dns_record.name | regex_escape }}[[:space:]]+IN[[:space:]]+
+          {{ dns_record.type | regex_escape }}.*
         line: >-
           {{ dns_record.name }} IN {{ dns_record.type }}
           {{ dns_record.value }}
           ; owner={{ dns_record.owner | default('unknown') }}
           ticket={{ dns_record.ticket | default('n/a') }}
         insertafter: EOF
+      register: bind_service_record_present
+      when:
+        - dns_record.action | default('add') in ['add', 'update']
+
+    - name: Ensure DNS record absent
+      ansible.builtin.lineinfile:
+        path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        regexp: >-
+          ^{{ dns_record.name | regex_escape }}[[:space:]]+IN[[:space:]]+
+          {{ dns_record.type | regex_escape }}.*
+        state: absent
+      register: bind_service_record_absent
+      when:
+        - dns_record.action == 'remove'
+
+    - name: Update serial for modified zone
+      ansible.builtin.include_tasks: serial.yml
+      when: >
+        (bind_service_record_present is defined and
+         bind_service_record_present.changed) or
+        (bind_service_record_absent is defined and
+         bind_service_record_absent.changed)
 
     - name: Validate updated zone
       ansible.builtin.command:
         cmd: >-
           named-checkzone
-          {{ bind_service_zone_definition.name }}
+          {{ bind_service_zone_definition.zone }}
           {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
-      changed_when: false
 
     - name: Validate full DNS configuration
       ansible.builtin.command:
@@ -108,16 +94,18 @@
       changed_when: false
 
     - name: Promote validated zone
-      ansible.builtin.command:
-        cmd: >-
-          mv -f
-          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
-          {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        dest: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}"
+        owner: root
+        group: named
+        mode: "0644"
       when: bind_service_zone_compare.rc != 0
-      changed_when: bind_service_zone_compare.rc != 0
       notify: Reload named
 
   rescue:
+
     - name: Remove failed work file
       ansible.builtin.file:
         path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
@@ -136,3 +124,10 @@
     - name: Fail play
       ansible.builtin.fail:
         msg: "Zone validation failed. Original zone preserved."
+
+  always:
+
+    - name: Remove work file
+      ansible.builtin.file:
+        path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
+        state: absent

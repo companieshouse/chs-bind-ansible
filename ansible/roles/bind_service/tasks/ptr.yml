@@ -1,16 +1,11 @@
 ---
-- name: Generate PTR records
-  ansible.builtin.lineinfile:
-    path: >-
-      {{ bind_service_zone_dir }}/
-      {{ item.value.split('.')[2] }}.{{ item.value.split('.')[1] }}.{{ item.value.split('.')[0] }}.in-addr.arpa.zone
-    line: >-
-      {{ item.value.split('.')[-1] }}
-      IN PTR
-      {{ item.name }}.{{ item.zone }}.
-    create: true
-    owner: "{{ bind_service_zone_owner }}"
-    group: "{{ bind_service_zone_group }}"
-    mode: "{{ bind_service_zone_mode }}"
-  loop: "{{ bind_service_records | selectattr('type', 'equalto', 'A') }}"
-  notify: Reload named
+- name: Process PTR records
+  ansible.builtin.include_tasks: ptr_record.yml
+  loop: >-
+    {{
+      bind_service_records
+      | selectattr('type', 'equalto', 'A')
+      | list
+    }}
+  loop_control:
+    label: "{{ item.value }}"
