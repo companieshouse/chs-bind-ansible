@@ -6,6 +6,7 @@
     owner: "{{ bind_service_lock_owner }}"
     group: "{{ bind_service_lock_group }}"
     mode: "{{ bind_service_lock_mode }}"
+  changed_when: false
 
 - name: Read zones.yml from remote host
   ansible.builtin.slurp:
@@ -14,7 +15,7 @@
 
 - name: Parse zones.yml
   ansible.builtin.set_fact:
-    bind_service_bind_zone_definitions: >-
+    bind_service_zone_definitions: >-
       {{
         bind_service_bind_zones_yml.content
         | b64decode
@@ -31,10 +32,6 @@
     - bind_service_manage_ptr | bool
     - bind_service_auto_ptr | bool
 
-- name: Update zone serials
-  ansible.builtin.include_tasks: serial.yml
-  when: bind_service_update_serial | bool
-
 - name: Validate zones
   ansible.builtin.include_tasks: validate.yml
   when: bind_service_validate_zones | bool
@@ -43,3 +40,4 @@
   ansible.builtin.file:
     path: "{{ bind_service_lock_file }}"
     state: absent
+  changed_when: false

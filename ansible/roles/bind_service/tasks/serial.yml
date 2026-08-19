@@ -4,50 +4,17 @@
     that:
       - >
         bind_service_zone_definitions.zones
-        | selectattr('name', 'equalto', item.zone)
+        | selectattr('zone', 'equalto', item.zone)
         | list
         | length > 0
     fail_msg: "Zone {{ item.zone }} not found in zones.yml"
   loop: "{{ bind_service_records | unique(attribute='zone') }}"
-
-- name: Process serial updates for affected zones
-  block:
-
-    - name: Set zone definition
-      ansible.builtin.set_fact:
-        bind_service_zone_definition: >-
-          {{
-            bind_service_zone_definitions.zones
-            | selectattr('name', 'equalto', item.zone)
-            | first
-          }}
-
-    - name: Read current serial
-      ansible.builtin.shell: >
-        awk 'tolower($0) ~ /serial/ {print $1; exit}'
-        {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
-      register: current_serial
-      changed_when: false
-
-    - name: Calculate next serial
-      ansible.builtin.set_fact:
-        next_serial: >-
-          {{
-            (
-              current_serial.stdout[:8] == lookup('pipe', 'date +%Y%m%d')
-            )
-            | ternary(
-                (current_serial.stdout | int) + 1,
-                (lookup('pipe', 'date +%Y%m%d') ~ '01') | int
-              )
-          }}
-
-    - name: Update zone serial
-      ansible.builtin.replace:
-        path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
-        regexp: '^(\s*)\d+\s*;\s*[Ss]erial.*$'
-        replace: '\1{{ next_serial }} ; serial'
-
-  loop: "{{ bind_service_records | unique(attribute='zone') }}"
   loop_control:
     label: "{{ item.zone }}"
+
+- name: Process serial updates for affected zones
+  ansible.builtin.include_tasks: serial_update.yml
+  loop: "{{ bind_service_records | unique(attribute='zone') }}"
+  loop_control:
+    loop_var: zone_item
+    label: "{{ zone_item.zone }}"

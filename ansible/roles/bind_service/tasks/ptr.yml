@@ -1,6 +1,7 @@
 ---
 - name: Process PTR records
-  ansible.builtin.include_tasks: ptr_record.yml
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/tasks/ptr_record.yml"
   loop: >-
     {{
       bind_service_records

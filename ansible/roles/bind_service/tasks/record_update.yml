@@ -29,6 +29,7 @@
         owner: root
         group: named
         mode: "0644"
+      changed_when: false
 
     - name: Ensure zone ends with newline
       ansible.builtin.lineinfile:
@@ -77,6 +78,7 @@
           named-checkzone
           {{ bind_service_zone_definition.zone }}
           {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work
+      changed_when: false
 
     - name: Validate full DNS configuration
       ansible.builtin.command:
@@ -131,3 +133,4 @@
       ansible.builtin.file:
         path: "{{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}.work"
         state: absent
+      changed_when: false
