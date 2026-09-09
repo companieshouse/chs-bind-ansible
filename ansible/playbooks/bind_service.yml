@@ -6,12 +6,7 @@
   gather_facts: false
 
   pre_tasks:
-    - name: Validate bind_action
-      ansible.builtin.assert:
-        that:
-          - bind_action is defined
-          - bind_action in ['record_add', 'record_remove', 'record_update']
-
+    
     - name: Validate bind_environment
       ansible.builtin.assert:
         that:

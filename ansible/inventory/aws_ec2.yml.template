@@ -1,10 +1,10 @@
 plugin: amazon.aws.aws_ec2
-boto_profile: "${AWS_PROFILE}"
 regions:
-  - "${AWS_REGION}"
+  - __AWS_REGION__
 
 filters:
-  tag:Name: "${INSTANCE_NAME}"
+  tag:Name:
+    - __INSTANCE_NAME__
   tag:Service: chs
   tag:ServiceSubType: bind
 
@@ -22,4 +22,3 @@ compose:
   ec2_hostname: tags.Hostname
   ec2_environment: tags.Environment
   ec2_instance_id: instance_id
-``
