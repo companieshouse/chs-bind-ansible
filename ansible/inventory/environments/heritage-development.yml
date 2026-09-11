@@ -1,4 +1,0 @@
-# inventory/environments/heritage-development.yml
-instance_name: bind-ns
-aws_profile: heritage-development-eu-west-2
-aws_region: eu-west-2

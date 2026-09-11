@@ -1,10 +1,10 @@
 plugin: amazon.aws.aws_ec2
 regions:
-  - __AWS_REGION__
+  - eu-west-2
 
 filters:
   tag:Name:
-    - __INSTANCE_NAME__
+    - bind-ns1
   tag:Service: chs
   tag:ServiceSubType: bind
 

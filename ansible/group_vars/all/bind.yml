@@ -40,15 +40,15 @@ bind_metadata_file: "{{ bind_persist_dir }}/metadata.json"
 
 bind_zones:
   - zone: heritage-development.aws.internal
-    file: development/forward/db.heritage.aws.internal
+    file: heritage-development/forward/development-heritage.aws.internal.zone
     environment: development
 
   - zone: heritage-staging.aws.internal
-    file: staging/forward/db.heritage.aws.internal
+    file: heritage-staging/forward/staging-heritage.aws.internal.zone
     environment: staging
 
   - zone: heritage-live.aws.internal
-    file: live/forward/db.heritage.aws.internal
+    file: heritage-live/forward/live-heritage.aws.internal.zone
     environment: live
 
 
@@ -62,9 +62,7 @@ bind_service_lock_owner: root
 bind_service_lock_group: root
 bind_service_lock_mode: "0644"
 
-
 bind_service_records:
-
   - zone: "heritage-{{ bind_environment }}.aws.internal"
     name: ns1
     type: A
@@ -80,9 +78,18 @@ bind_service_records:
     type: A
     value: 10.0.0.20
 
-# bind verification service
 bind_verification:
-  record: molecule-test
-  zone: dummyhouse.co.uk
-  type: A
-  expected_value: 10.10.20.30
+  - record: ns1
+    zone: "heritage-{{ bind_environment }}.aws.internal"
+    type: A
+    expected_value: 10.0.0.10
+
+  - record: ns2
+    zone: "heritage-{{ bind_environment }}.aws.internal"
+    type: A
+    expected_value: 10.0.0.11
+
+  - record: mail
+    zone: "heritage-{{ bind_environment }}.aws.internal"
+    type: A
+    expected_value: 10.0.0.20
