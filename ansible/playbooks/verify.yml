@@ -1,0 +1,47 @@
+---
+- name: Verify DNS records
+  hosts: bind_primary
+  become: true
+
+  tasks:
+    - name: Check zone file contains record
+      ansible.builtin.command:
+        cmd: grep "molecule-test" /var/named/example.com.zone
+      changed_when: false
+
+    - name: Validate named configuration
+      ansible.builtin.command:
+        cmd: named-checkconf
+      changed_when: false
+
+    - name: Validate zone
+      ansible.builtin.command:
+        cmd: >
+          named-checkzone example.com
+          /var/named/example.com.zone
+      changed_when: false
+
+    - name: Query DNS
+      ansible.builtin.command:
+        cmd: dig @localhost molecule-test.example.com A +short
+      register: dig_result
+      changed_when: false
+
+    - name: Assert DNS answer
+      ansible.builtin.assert:
+        that:
+          - "'10.0.0.15' in dig_result.stdout"
+    fail_msg: DNS record update failed
+
+    - name: Verify record
+      ansible.builtin.command:
+        cmd: >-
+          dig @localhost
+          {{ bind_verification.record }}.{{ bind_verification.zone }}
+          {{ bind_verification.type }}
+          +short
+      register: result
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: bind_verification.expected_value in result.stdout

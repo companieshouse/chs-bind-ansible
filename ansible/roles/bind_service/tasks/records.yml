@@ -13,7 +13,7 @@
     group: root
     mode: "0640"
     line: >-
-      {{ ansible_date_time.iso8601 }}
+      {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
       user={{ bind_service_user | default('ansible') }}
       action={{ item.state | default('present') }}
       name={{ item.name }}
@@ -21,3 +21,4 @@
       value={{ item.value | default('') }}
       ticket={{ item.ticket | default('n/a') }}
   loop: "{{ bind_service_records }}"
+  when: bind_service_record_present.changed

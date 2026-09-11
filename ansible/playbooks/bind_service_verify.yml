@@ -1,0 +1,40 @@
+---
+- name: Verify DNS records
+  hosts: aws_ec2
+  remote_user: ec2-user
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Validate named configuration
+      ansible.builtin.command:
+        cmd: named-checkconf
+      changed_when: false
+
+    - name: Verify DNS records
+      ansible.builtin.command:
+        cmd: >-
+          dig @localhost
+          {{ item.record }}.{{ item.zone }}
+          {{ item.type }}
+          +short
+      register: result
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: item.expected_value in result.stdout
+      loop: "{{ bind_verification }}"
+      loop_control:
+        label: "{{ item.record }}"
+
+    - name: Validate DNS responses
+      ansible.builtin.assert:
+        that:
+          - item.expected_value in result.results[ansible_loop.index0].stdout
+        fail_msg: >-
+          DNS verification failed for
+          {{ item.record }}.{{ item.zone }}
+      loop: "{{ bind_verification }}"
+      loop_control:
+        extended: true
+        label: "{{ item.record }}"

@@ -1,0 +1,28 @@
+---
+- name: Set zone definition
+  ansible.builtin.set_fact:
+    bind_service_zone_definition: >-
+      {{
+        bind_service_zone_definitions.zones
+        | selectattr('zone', 'equalto', zone_item.zone)
+        | first
+      }}
+
+- name: Ensure zone definition exists
+  ansible.builtin.assert:
+    that:
+      - bind_service_zone_definition is defined
+      - bind_service_zone_definition.file is defined
+    fail_msg: >-
+      No matching zone definition found for
+      {{ zone_item.zone }}
+
+- name: Validate DNS zone
+  ansible.builtin.command:
+    cmd: >-
+      named-checkzone
+      {{ zone_item.zone }}
+      {{ bind_service_zone_dir }}/{{ bind_service_zone_definition.file }}
+  register: bind_service_validate_out
+  failed_when: bind_service_validate_out.rc != 0
+  changed_when: false
